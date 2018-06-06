@@ -3,31 +3,28 @@
 
 module Lib where
 
-import           Prelude                 (print)
 import           RIO
+import qualified RIO.ByteString.Lazy     as BL
 import qualified RIO.Map                 as Map
 import           RIO.Process
 
 import           Control.Monad           (when)
-import           Data.Aeson              (FromJSON, ToJSON, Value (..),
-                                          parseJSON, toJSON, (.:), (.=))
+import           Data.Aeson              (FromJSON, Value (..), parseJSON, (.:))
 import           Data.Semigroup          ((<>))
 import qualified Data.Text               as T
-import qualified Data.Text.IO            as TIO
 import qualified Data.Text.Lazy          as TL
 import qualified Data.Text.Lazy.Encoding as TEL
 import           Data.Time               (defaultTimeLocale, formatTime,
                                           getCurrentTime, getCurrentTimeZone,
                                           utcToLocalTime)
 import           Data.Version            (showVersion)
-import           Data.Yaml               (decodeFileEither)
 import qualified Data.Yaml               as Y
 import           Options.Applicative
 import           Paths_borg_runner       (version)
-import           System.Directory        (doesFileExist, makeAbsolute)
-import           System.Environment      (lookupEnv, setEnv)
-import           System.Exit             (ExitCode (..), die, exitWith)
-import           System.Posix.User       (getEffectiveUserID, getRealUserID)
+import           System.Directory        (doesFileExist)
+import           System.Environment      (setEnv)
+import           System.Exit             (die)
+import           System.Posix.User       (getRealUserID)
 
 
 data App = App { appConfig         :: !BorgConfig
@@ -52,6 +49,7 @@ data BorgRunnerOpts = BorgRunnerOpts
             , debug          :: Bool
             }
 
+versionOpt :: Parser (a -> a)
 versionOpt = infoOption (showVersion version) (
                short 'v'
                <> long "version"
@@ -102,7 +100,7 @@ readConfig p = do
   c <- decodeConfig p
   case c of
     Left err -> die (show err)
-    Right c  -> return c
+    Right c' -> return c'
 
 entrypoint :: BorgRunnerOpts -> IO ()
 entrypoint (BorgRunnerOpts configFilePath debug) = do
@@ -134,8 +132,10 @@ mountBackups = do
   env <- ask
   let path = mountPath $ env ^. configL
   let cmd = mountCommand $ env ^. configL
-  (out,  _) <-  proc "mount" [] readProcess_
-  if (T.isInfixOf (T.pack path) (TL.toStrict $ TEL.decodeUtf8 out)) then
+  (out,  err) <-  proc "mount" [] readProcess_
+  logDebug (displayShow out)
+  logDebug (displayShow err)
+  if (T.isInfixOf (T.pack path) (textify out)) then
       logInfo "Backup volume is already mounted"
   else
       proc (T.unpack cmd) [] runProcess_
@@ -147,8 +147,10 @@ umountBackups = do
   let path = mountPath $ env ^. configL
   proc "umount" [path] runProcess_
 
-notify :: (HasConfig env, HasLogFunc env, HasProcessContext env) => T.Text -> RIO env ()
-notify m = proc "/usr/bin/notify-send" ["-u", "normal", T.unpack m] runProcess_
+notify :: (HasLogFunc env, HasProcessContext env) => T.Text -> RIO env ()
+notify m = do
+  logDebug $ displayShow $ "Notifying user: " <> m
+  proc "/usr/bin/notify-send" ["-u", "normal", T.unpack m] runProcess_
 
 runBackup :: (HasConfig env, HasLogFunc env, HasProcessContext env) => RIO env ()
 runBackup = do
@@ -156,50 +158,85 @@ runBackup = do
   let config = env ^. configL
   let net = networkName config
   logDebug "Starting Borg Backup"
-  (out, _) <- proc "nmcli" ["-t", "-f", "active,ssid", "dev", "wifi"] readProcess_
-  now <- liftIO getCurrentTime
-  tz <- liftIO getCurrentTimeZone
-  let today = T.pack $ formatTime defaultTimeLocale "%Y-%m-%d" $ utcToLocalTime tz now
-  when (T.isInfixOf ("yes:" <> net) (TL.toStrict $ TEL.decodeUtf8 out)) $ do
+  nets <- getNetworks
+  today <- liftIO getToday
+  when (T.isInfixOf ("yes:" <> net) nets) $ do
     logInfo "Connected to home wifi"
     logInfo "Starting backup process"
     mountBackups
-    (out, _) <- proc "borg" (map T.unpack $ ["list", (T.pack $ mountPath config) <> "/" <> (repoName config)]) readProcess_
-    when (T.isInfixOf today (TL.toStrict $ TEL.decodeUtf8 out)) (liftIO $ die "Today's backup is already there. Doing nothing.")
+    backups <- listBackups
+    when (T.isInfixOf today backups) (liftIO $ die "Today's backup is already there. Doing nothing.")
     logInfo "Backing up stuffz"
     logInfo "Notifying user"
     notify "Borg backup started"
     runBackup'
     pruneBackup
     notify "Borg backup finished"
-    umountBackups
+  umountBackups
+
+textify :: BL.ByteString -> T.Text
+textify = TL.toStrict . TEL.decodeUtf8
+
+getToday :: IO (Text)
+getToday = do
+  now <- getCurrentTime
+  tz <- getCurrentTimeZone
+  return $ T.pack $ formatTime defaultTimeLocale "%Y-%m-%d" $ utcToLocalTime tz now
+
+listBackups :: (HasConfig env, HasLogFunc env, HasProcessContext env) => RIO env (T.Text)
+listBackups = do
+  env <- ask
+  let config = env ^. configL
+  -- The list command actually writes its output to stdout as would be expected
+  (out, err) <- proc "borg" (map T.unpack $ ["list", repository config]) readProcess_
+  logDebug (displayShow out)
+  logDebug (displayShow err)
+  return $ textify out
+
+getNetworks :: (HasLogFunc env, HasProcessContext env) => RIO env (T.Text)
+getNetworks = do
+  (out, err) <- proc "nmcli" ["-t", "-f", "active,ssid", "dev", "wifi"] readProcess_
+  logDebug (displayShow out)
+  logDebug (displayShow err)
+  return $ textify out
+
+repository :: BorgConfig -> T.Text
+repository config = (T.pack $ mountPath config) <> "/" <> repoName config
 
 runBackup' :: (HasConfig env, HasLogFunc env, HasProcessContext env) => RIO env ()
 runBackup' = do
     env <- ask
     let config = env ^. configL
     let name = "'{hostname}-{now}'"
-    (out, _) <- proc "borg" ( map T.unpack $ [ "create"
+    (_, err) <- proc "borg" ( map T.unpack $ [ "create"
                             , "--compression"
                             , "zlib,9"
                             , "-v"
                             , "--stats"
-                            , (T.pack $ mountPath config) <> "/" <> (repoName config) <> "::" <> name
+                            , (repository config) <> "::" <> name
                             ] ++ (includes config) ++ ["--exclude-caches"] ++ (exs $ excludes config))
                             readProcess_
-    logDebug (displayShow out)
+    -- We want to always log stderr here since borg writes all of it's logging to stderr by default (see: man borg).
+    -- This is because borg want to be as silent as possible and the default log lever is WARNING.
+    -- We on the other hand want to log a summary at the end of the process so that user can see what was going on
+    -- hence the use of the "--stats" flag.
+    logInfo (displayShow err)
   where exs xs = map (\x -> "--exclude=" <> x) xs
 
 
 pruneBackup :: (HasConfig env, HasLogFunc env, HasProcessContext env) => RIO env ()
 pruneBackup = do
-    (out, _) <- proc "borg" (map T.unpack $ [ "prune"
+    env <- ask
+    let config = env ^. configL
+    (out, err) <- proc "borg" (map T.unpack $ [ "prune"
                             , "-v"
                             , "--list"
+                            , repository config
                             , "--keep-daily=7"
                             , "--keep-weekly=4"
                             , "--keep-monthly=6"
                             , "--prefix=" <> "'{hostname}-'"
                             ])
                             readProcess_
-    logDebug (displayShow out)
+    logInfo (displayShow out)
+    logDebug (displayShow err)
