@@ -1,5 +1,10 @@
 # borg-runner
 
+| Master |
+| -------|
+|
+[![master](https://travis-ci.org/denibertovic/borg-runner.svg?branch=master)](https://travis-ci.org/denibertovic/borg-runner) |
+
 A helper tool for running borg backups
 
 ## Example config file
