@@ -14,6 +14,7 @@ excludes:
 - /home/myuser/.cache
 - "*.pyc"
 - .stack-work
+- .stack
 - node_modules
 - bower_components
 - /etc/shadow
@@ -35,10 +36,30 @@ network_name: MyHomeWifi
 network_device: someIfaceName
 ```
 
-## Running
+`NOTE`: The `mount_command`, in my case is just a simple bash script like this:
 
 ```bash
-sudo borg-runner --debug -c ~/.borg-runner-config.yaml
+#!/bin/bash
+
+mount 192.168.0.43:/volume1/backups /media/varys/backups
+
 ```
 
-`NOTE`: The idea is to add this as a cronjob
+Save this file in /etc/borg-runner.conf make sure to set the correct permissions:
+
+
+```bash
+chown root:root /etc/borg-runner.yaml
+chmod 600 /etc/borg-runner.yaml
+```
+
+## Running
+
+Borg runner needs root permissions to run. This is mostly becasue it will need to mount `NFS` volumes and the like, but
+also becasue if you want to backup a folder like `/etc` you have to run the backup as root.
+
+```bash
+sudo borg-runner --debug -c /etc/borg-runner.yaml
+```
+
+`NOTE`: The idea is to add this as a cronjob and run it how often you'd like.
