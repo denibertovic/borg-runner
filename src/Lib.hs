@@ -118,9 +118,6 @@ requireRoot = do
   uid <- getRealUserID
   when (not $ uid == 0) (die "Please run as root")
 
-setBorgEnv :: T.Text -> IO ()
-setBorgEnv p = setEnv "BORG_PASSPHRASE" (show p)
-
 mountBackups ::
      (HasConfig env, HasLogFunc env, HasProcessContext env) => RIO env ()
 mountBackups = do
