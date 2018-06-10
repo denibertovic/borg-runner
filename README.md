@@ -77,3 +77,17 @@ sudo borg-runner --debug -c /etc/borg-runner.yaml
 ```
 
 `NOTE`: The idea is to add this as a cronjob and run it how often you'd like.
+
+Example crontab config:
+
+```
+30 19-23 * * * borg-runner --debug -c /etc/borg-runner.yaml 2>&1 | logger -t borgrunner
+```
+
+This will attempt to run the backups every 30 minutes between the hours 19-23. It will only actually run the
+backup if I'm connected to my home wifi (where I am actually able to mount my NAS drive). If I'm not connected to my
+home wifi it will just exit.
+
+The backup usually finishes for me in 30 minutes so a second run will just see that there already is a backup for today
+and will not do another one. If for some reason a backup is taking longer to finish and second cron is triggered borg
+will simply that there is a lock file present and will fail to run the backup anyway.
