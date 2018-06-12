@@ -208,7 +208,7 @@ runBackup' ::
 runBackup' = do
   env <- ask
   let config = env ^. configL
-  let name = "'{hostname}-{now}'"
+  let name = "{hostname}-{now}"
   (_, err) <-
     proc
       "borg"
@@ -246,7 +246,7 @@ pruneBackup = do
        , "--keep-daily=7"
        , "--keep-weekly=4"
        , "--keep-monthly=6"
-       , "--prefix=" <> "'{hostname}-'"
+       , "--prefix=" <> "{hostname}-"
        ])
       readProcess_
   logInfo (displayShow out)
