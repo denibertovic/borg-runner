@@ -15,14 +15,17 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TEL
 import Data.Time
-       (defaultTimeLocale, formatTime, getCurrentTime, getCurrentTimeZone,
-        utcToLocalTime)
+  ( defaultTimeLocale
+  , formatTime
+  , getCurrentTime
+  , getCurrentTimeZone
+  , utcToLocalTime
+  )
 import Data.Version (showVersion)
 import qualified Data.Yaml as Y
 import Options.Applicative
 import Paths_borg_runner (version)
 import System.Directory (doesFileExist)
-import System.Environment (setEnv)
 import System.Exit (die)
 import System.Posix.User (getRealUserID)
 
