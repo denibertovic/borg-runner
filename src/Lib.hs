@@ -72,6 +72,7 @@ data BorgConfig = BorgConfig
   , mountCommand :: Command
   , mountPath :: FilePath
   , repoName :: T.Text
+  , userName :: T.Text
   , networkName :: T.Text
   , networkDevice :: T.Text
   , password :: T.Text
@@ -84,6 +85,7 @@ instance FromJSON BorgConfig where
     mountCommand <- o .: "mount_command"
     mountPath <- o .: "mount_path"
     repoName <- o .: "repo_name"
+    userName <- o .: "username"
     networkName <- o .: "network_name"
     networkDevice <- o .: "network_device"
     password <- o .: "password"
@@ -143,10 +145,12 @@ umountBackups = do
   let path = mountPath $ env ^. configL
   proc "umount" [path] runProcess_
 
-notify :: (HasLogFunc env, HasProcessContext env) => T.Text -> RIO env ()
+notify :: (HasConfig env, HasLogFunc env, HasProcessContext env) => T.Text -> RIO env ()
 notify m = do
+  env <- ask
+  let u = userName $ env ^. configL
   logDebug $ displayShow $ "Notifying user: " <> m
-  proc "/usr/bin/notify-send" ["-u", "normal", T.unpack m] runProcess_
+  proc "sudo" ["su", T.unpack u, "-c", "notify-send -u normal " <> T.unpack m] runProcess_
 
 runBackup ::
      (HasConfig env, HasLogFunc env, HasProcessContext env) => RIO env ()

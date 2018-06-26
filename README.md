@@ -38,6 +38,11 @@ includes:
 - /home/myuser
 - /etc
 
+# Name of main system user
+# Used only for setting the correct notification
+# preferences with libnotify
+username: deni
+
 mount_command: /home/myuser/dotfiles/scripts/mount_backups.sh
 mount_path: /media/backups
 repo_name: myRepo
