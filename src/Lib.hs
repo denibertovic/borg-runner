@@ -150,7 +150,10 @@ notify m = do
   env <- ask
   let u = userName $ env ^. configL
   logDebug $ displayShow $ "Notifying user: " <> m
-  proc "su" [T.unpack u, "-c", "notify-send -u normal " <> T.unpack m] runProcess_
+  proc "su" [T.unpack u, "-c", "notify-send -u normal " <> (T.unpack $ wrapSingleQuotes m)] runProcess_
+
+wrapSingleQuotes :: T.Text -> T.Text
+wrapSingleQuotes t = "'" <> t <> "'"
 
 runBackup ::
      (HasConfig env, HasLogFunc env, HasProcessContext env) => RIO env ()
