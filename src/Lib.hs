@@ -170,7 +170,8 @@ runBackup = do
     mountBackups
     backups <- listBackups
     when
-      (T.isInfixOf today backups)
+      (T.isInfixOf today backups) $ do
+      umountBackups
       (liftIO $ die "Today's backup is already there. Doing nothing.")
     logInfo "Backing up stuffz"
     logInfo "Notifying user"
@@ -178,7 +179,7 @@ runBackup = do
     runBackup'
     pruneBackup
     notify "Borg backup finished"
-  umountBackups
+    umountBackups
 
 textify :: BL.ByteString -> T.Text
 textify = TL.toStrict . TEL.decodeUtf8
