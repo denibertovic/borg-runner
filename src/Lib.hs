@@ -73,7 +73,7 @@ data BorgConfig = BorgConfig
   , mountPath :: FilePath
   , repoName :: T.Text
   , userName :: T.Text
-  , networkName :: T.Text
+  , networkNames :: [T.Text]
   , networkDevice :: T.Text
   , password :: T.Text
   } deriving (Eq, Show)
@@ -86,7 +86,7 @@ instance FromJSON BorgConfig where
     mountPath <- o .: "mount_path"
     repoName <- o .: "repo_name"
     userName <- o .: "username"
-    networkName <- o .: "network_name"
+    networkNames <- o .: "network_name"
     networkDevice <- o .: "network_device"
     password <- o .: "password"
     return $ BorgConfig {..}
@@ -160,11 +160,11 @@ runBackup ::
 runBackup = do
   env <- ask
   let config = env ^. configL
-  let net = networkName config
+  let confNetNames = networkNames config
   logDebug "Starting Borg Backup"
-  nets <- getNetworks
+  connectedNets <- getNetworks
   today <- liftIO getToday
-  when (T.isInfixOf ("yes:" <> net) nets) $ do
+  when (any (== True) (map (\x -> T.isInfixOf ("yes:" <> x) connectedNets) confNetNames)) $ do
     logInfo "Connected to home wifi"
     logInfo "Starting backup process"
     mountBackups
