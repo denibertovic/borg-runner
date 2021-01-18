@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL = help
 
-VERSION ?= $(shell grep "^version:" borg-runner.cabal | cut -d " " -f9)
+VERSION ?= $(shell grep "^version:" package.yaml | cut -d " " -f14)
 
 ## Run build
 build:
@@ -19,6 +19,10 @@ test:
 ## Cut new release
 release:
 	@git tag ${VERSION} && git push --tags
+
+## Print current version
+version:
+	@echo ${VERSION}
 
 ## Show help screen.
 help:
