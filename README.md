@@ -10,7 +10,7 @@ A helper tool for running borg backups
 
 * The tool currently assumes that you will mount the backup volume from your local NAS device using
   NFS. It also assumes that it will unmount the volume at the end using `umount`.
-* The tool assumes that you will only run the backups when connected to you home (or other designated) wireless
+* The tool assumes that you will only run the backups when connected to your home (or other designated) wireless
   network.
 * You have to install `nmcli` since that's what borg-runner uses to check what SSID you're currently
   connected to.
@@ -50,8 +50,11 @@ repo_name: myRepo
 password: superSecretPw
 
 # NOTE: currently only wifi support since we use nmcli to identify when we're connected
-# to the Home wifi SSID
-network_name: MyHomeWifi
+# to the Home wifi SSID. Supports multiple SSIDs.
+network_names:
+  - MyHomeWifi
+  - SomeOtherWifi
+
 network_device: someIfaceName
 ```
 
@@ -93,6 +96,6 @@ This will attempt to run the backups every 30 minutes between the hours 19-23. I
 backup if I'm connected to my home wifi (where I am actually able to mount my NAS drive). If I'm not connected to my
 home wifi it will just exit.
 
-The backup usually finishes for me in 30 minutes so a second run will just see that there already is a backup for today
-and will not do another one. If for some reason a backup is taking longer to finish and second cron is triggered borg
-will simply that there is a lock file present and will fail to run the backup anyway.
+The backup usually finishes in 30 minutes (for me), so a second run will see that there already is a backup for today
+and will *not* do another one. If, for some reason, a backup is taking longer to finish and a second cronjob is triggered, borg
+will simply see that there is a lock file present and will fail to run the backup anyway.
