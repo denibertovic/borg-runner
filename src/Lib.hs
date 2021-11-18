@@ -234,9 +234,9 @@ runBackup' = do
        (includes config) ++ ["--exclude-caches"] ++ (exs $ excludes config))
       readProcess_
     -- We want to always log stderr here since borg writes all of it's logging to stderr by default (see: man borg).
-    -- This is because borg want to be as silent as possible and the default log lever is WARNING.
-    -- We on the other hand want to log a summary at the end of the process so that user can see what was going on
-    -- hence the use of the "--stats" flag.
+    -- This is because borg wants to be as silent as possible and the default log level is WARNING.
+    -- We on the other hand want to log a summary at the end of the process so that the user can see what was going on.
+    -- Hence the use of the "--stats" flag.
   logInfo (displayShow err)
   where
     exs xs = map (\x -> "--exclude=" <> x) xs
