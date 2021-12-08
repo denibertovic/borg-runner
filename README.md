@@ -88,7 +88,7 @@ Example crontab config:
 30 19-23 * * * borg-runner --debug -c /etc/borg-runner.yaml 2>&1 | logger -t borgrunner
 ```
 
-This will attempt to run the backups every 30 minutes between the hours 19-23. It will only actually run the
+This will attempt to run the backups every hour between the hours 19-23. It will only actually run the
 backup if I'm connected to my home wifi (where I am actually able to mount my NAS drive). If I'm not connected to my
 home wifi it will just exit.
 
