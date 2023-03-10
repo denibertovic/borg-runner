@@ -1,4 +1,4 @@
-.PHONY: build repl test release help
+.PHONY: build repl test release help nix-build
 
 .DEFAULT_GOAL = help
 
@@ -11,6 +11,10 @@ build:
 ## Run repl
 repl:
 	@stack repl
+
+## Run nix-build
+nix-build:
+	@nix-build -E 'with import <nixpkgs> { }; callPackage ./default.nix { }' -A borg-runner.components.exes.borg-runner
 
 ## Run tests
 test:

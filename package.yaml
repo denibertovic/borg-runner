@@ -58,12 +58,14 @@ executables:
     - borg-runner
 
 tests:
-  borg-runner-test:
-    main:                Spec.hs
+  hspec:
+    main:                Main.hs
     source-dirs:         test
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    build-tools: hspec-discover:hspec-discover
     dependencies:
     - borg-runner
+    - hspec
