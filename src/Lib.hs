@@ -86,7 +86,7 @@ instance FromJSON BorgConfig where
     mountPath <- o .: "mount_path"
     repoName <- o .: "repo_name"
     userName <- o .: "username"
-    networkNames <- o .: "network_name"
+    networkNames <- o .: "network_names"
     networkDevice <- o .: "network_device"
     password <- o .: "password"
     return $ BorgConfig {..}
